@@ -11,15 +11,18 @@ from utils import featureExtractor, mvFeatureExtractor
 from utils.helper import softmax
 from sklearn.preprocessing import minmax_scale
 
+
 class ChartRecommender:
 
-    def __init__(self, csv_file: str, word_embedding_dict: dict, column_score_model, chart_type_model) -> None:
+    def __init__(self, csv_file: str, word_embedding_dict: dict, column_score_model, chart_type_model,device) -> None:
         """Init the recommender
 
         Args:
             csv_file (str): The path of input csv file
         """
         self.df = pd.read_csv(csv_file)
+        self.device = device
+        
         self.feature_dict = self.compute_columns_feature(self.df, word_embedding_dict)
 
         ## enumerate possible charts 
@@ -27,6 +30,7 @@ class ChartRecommender:
 
         ## assess the quality of each chart
         self.charts = self.recommend_chart(self.charts_indices, self.feature_dict, column_score_model, chart_type_model)
+        
 
     def recommend_chart(self, charts_indices, feature_dict, column_score_model, chart_type_model):
         """Evaluates the model and recommends single chart
@@ -51,7 +55,7 @@ class ChartRecommender:
         chart_features = [columns_to_features(c) for c in charts_indices]
 
         ## eva the assessment/scoring model
-        model_input = Variable(torch.Tensor(chart_features)).cuda().float() 
+        model_input = Variable(torch.Tensor(chart_features)).to(self.device).float() 
         max_seq_len = 4
         seq_len = np.full(model_input.shape[0], max_seq_len)
         model_input = pack_padded_sequence(model_input, seq_len, batch_first=True, enforce_sorted = False)
@@ -59,7 +63,7 @@ class ChartRecommender:
         chart_scores = minmax_scale(chart_scores) ## min-max norm
 
         ## eva the chart type prediction model
-        model_input = Variable(torch.Tensor(chart_features)).cuda().float() 
+        model_input = Variable(torch.Tensor(chart_features)).to(self.device).float() 
         types = chart_type_model(model_input).tolist()
         classes = ['area', 'bar', 'bubble', 'line', 'pie', 'radar', 'scatter', 'stock', 'surface']
         def types_to_meaning(prob):
@@ -152,7 +156,7 @@ class ChartRecommender:
                 
                 ## use the trained model
                 chart_feature_dl = mvFeatureExtractor.charts_to_features_dl(new_mv, self.charts, seq_length = 12) ## the max number of charts in an MV is 12
-                mv_model_inut = Variable(torch.Tensor([chart_feature_dl])).cuda().float() 
+                mv_model_inut = Variable(torch.Tensor([chart_feature_dl])).to(self.device).float() 
                 scores.append(mv_model(mv_model_inut).tolist()[0])
 
             ## get the highest score and select it (greedy algorithm)
