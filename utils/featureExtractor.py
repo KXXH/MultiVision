@@ -79,7 +79,7 @@ def compute_benford(values):
     ## BENFORD constants, see <see href="https://en.wikipedia.org/wiki/Benford%27s_law"/>.
     benfordstd = [0.0, 0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046]
     
-    first_digits = [str(abs(v))[0] for v in values] ## negative values contain -
+    first_digits = [str(abs(v))[0] for v in values if not np.isnan(v)] ## negative values contain -
     # first_digits = [v for v in values if v.isnumeric()] ## might be -
 
     value, counts = np.unique(first_digits, return_counts=True)
